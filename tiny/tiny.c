@@ -5,12 +5,13 @@
  */
 #include "csapp.h"
 
+static char reshttp[MAXLINE] = "1.0"; // 연습 문제 6-c
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *filename, int filesize);
+void serve_static(int fd, char *filename, int filesize, char *method);
 void get_filetype(char *filename, char *filetype);
-void serve_dynamic(int fd, char *filename, char *cgiargs);
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
 int main(int argc, char **argv) 
@@ -57,9 +58,11 @@ void doit(int fd)
     if (!Rio_readlineb(&rio, buf, MAXLINE)) return;  // request를 읽는다. doit:readrequest
     printf("Request headers : \n"); 
     printf("%s", buf);
+    
     sscanf(buf, "%s %s %s", method, uri, version);       //method, uri, version 정보를 입력받는다. doit:parserequest
     
-    if (strcasecmp(method, "GET")) { //request method 종류가 GET인지 비교한다. doit:beginrequesterr
+    // 연습 문제 11.11 - HEAD method 추가
+    if (strcasecmp(method, "GET") && strcasecmp(method, "HEAD")) { //request method 종류가 GET인지 비교한다. doit:beginrequesterr
         clienterror(fd, method, "501", "Not Implemented",
                     "Tiny does not implement this method");
         return;
@@ -84,7 +87,7 @@ void doit(int fd)
             return;
         }
         //정적 컨텐츠를 사용자에게 제공한다. doit:servestatic
-        serve_static(fd, filename, sbuf.st_size);       
+        serve_static(fd, filename, sbuf.st_size, method);       
     }
     /* 2. 동적 콘텐츠 일 때. Serve dynamic content */
     else { 
@@ -95,7 +98,7 @@ void doit(int fd)
 	    return;
 	}
     //동적 컨텐츠를 사용자에게 제공한다. doit:servedynamic
-	serve_dynamic(fd, filename, cgiargs);
+	serve_dynamic(fd, filename, cgiargs, method);
     }
 }
 /* $end doit */
@@ -186,14 +189,15 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
  * serve_static - copy a file back to the client 
  */
 /* $begin serve_static */
-void serve_static(int fd, char *filename, int filesize) 
+void serve_static(int fd, char *filename, int filesize, char *method) 
 {
     int srcfd;
     char *srcp, filetype[MAXLINE], buf[MAXBUF];
+    rio_t rio;
  
     /* Send response headers to client */
     get_filetype(filename, filetype); //파일 이름을 통해 파일 타입 결정. servestatic:getfiletype
-    sprintf(buf, "HTTP/1.0 200 OK\r\n"); //헤더 전송. servestatic:beginserve
+    sprintf(buf, "HTTP/%s 200 OK\r\n", reshttp); //헤더 전송. servestatic:beginserve
     sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
     sprintf(buf, "%sConnection: close\r\n", buf);
     sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
@@ -202,12 +206,24 @@ void serve_static(int fd, char *filename, int filesize)
     printf("Response headers:\n");
     printf("%s", buf);
 
-    /* 요청한 파일의 내용을 fd로 복사해서 응답 본체를 보낸다. Send response body to client */
+    if(strcasecmp(method, "GET") == 0) { // method가 GET일때만 응답 객체 받게끔
+        /* 요청한 파일의 내용을 fd로 복사해서 응답 본체를 보낸다. Send response body to client */
+        srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. servestatic:open
+        srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//요청한 파일을 가상 메모리 영역으로 매핑한다. servestatic:mmap
+        Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. servestatic:close
+        Rio_writen(fd, srcp, filesize);         //servㅁestatic:write
+        Munmap(srcp, filesize);                 //servestatic:munmap
+    }
+
+    /* 연습 문제 11.9
     srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. servestatic:open
-    srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//요청한 파일을 가상 메모리 영역으로 매핑한다. servestatic:mmap
+    
+    srcp = (char *)malloc(filesize);
+    Rio_readn(srcfd, srcp, filesize);
     Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. servestatic:close
-    Rio_writen(fd, srcp, filesize);         //servㅁestatic:write
-    Munmap(srcp, filesize);                 //servestatic:munmap
+    Rio_writen(fd, srcp, filesize);         //servestatic:write
+    free(srcp);
+    */
 }
 
 /*
@@ -223,6 +239,8 @@ void get_filetype(char *filename, char *filetype)
 	strcpy(filetype, "image/png");
     else if (strstr(filename, ".jpg"))
 	strcpy(filetype, "image/jpeg");
+    else if (strstr(filename, ".mpg"))
+    strcpy(filetype, "video/mpg"); // 연습 문제 11.7 
     else
 	strcpy(filetype, "text/plain");
 }  
@@ -232,7 +250,7 @@ void get_filetype(char *filename, char *filetype)
  * serve_dynamic - run a CGI program on behalf of the client
  */
 /* $begin serve_dynamic */
-void serve_dynamic(int fd, char *filename, char *cgiargs) 
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method) 
 {
     char buf[MAXLINE], *emptylist[] = { NULL };
 
@@ -246,6 +264,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
     if (Fork() == 0) { 
 	/* Real server would set all CGI vars here */
 	setenv("QUERY_STRING", cgiargs, 1); //QUERY_STRING 환경 변수를 요청 URI의 CGI 인자들로 초기화한다. servedynamic:setenv
+	setenv("REQUEST_METHOD", method, 1); //REQEUST_METHOD 환경 변수를 요청 URI의 CGI 인자들로 초기화한다. servedynamic:setenv
 	Dup2(fd, STDOUT_FILENO); /* 자식은 자식의 표준 출력을 연결 파일 식별자로 재지정한다. Redirect stdout to client */ //servedynamic:dup2
 	Execve(filename, emptylist, environ); /* CGI 프로그램을 로드하고 실행한다. Run CGI program */ //servedynamic:execve
     }

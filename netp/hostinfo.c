@@ -12,26 +12,25 @@ int main(int argc, char **argv)
 	exit(0);
     }
 
-    /* Get a list of addrinfo records */
+    /* addrinfo 연결 리스트를 얻는다. */
     memset(&hints, 0, sizeof(struct addrinfo)); // hints 구조체 초기화
-    hints.ai_family = AF_INET;       /* IPv4 only */        //line:netp:hostinfo:family
-    hints.ai_socktype = SOCK_STREAM; /* Connections only */ //line:netp:hostinfo:socktype
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_STREAM; // TCP 소켓을 받는다는 사실 명시
+
     rc = getaddrinfo(argv[1], argv[2], &hints, &listp); // 도메인 네임 리턴
     if (rc != 0) { // 오류 발생
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(rc));
         exit(1);
     }
 
-    /* Walk the list and display each IP address */
-    flags = NI_NUMERICHOST; /* 10진수 숫자로 포팅된 형태로 리턴받는다. Display address string instead of domain name */
+    /* addrinfo 연결 리스트를 순회한다. */
+    flags = NI_NUMERICHOST; // 도메인 네임 대신에 10진수 숫자로 포팅된 형태로 리턴받는다.
     for (p = listp; p; p = p->ai_next) {
         getnameinfo(p->ai_addr, p->ai_addrlen, buf, MAXLINE, NULL, 0, flags);
         printf("%s\n", buf);
     }
 
-    /* Clean up */
     Freeaddrinfo(listp);
 
     exit(0);
 }
-/* $end hostinfo */

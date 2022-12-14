@@ -5,14 +5,12 @@
 #define MAX_OBJECT_SIZE 102400
 
 /* You won't lose style points for including this long line in your code */
-static const char *user_agent_hdr =
-    "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 "
-    "Firefox/10.0.3\r\n";
+static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
 
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *ip, char *port, char *path);
-void connect_origin_server(char *buf, char *host, char *port);
+void connect_origin_server(int fd, char *buf, char *host, char *port, char *path);
 
 int main(int argc, char **argv) 
 {
@@ -49,7 +47,7 @@ void doit(int fd)
     /* Read request line and headers */
     Rio_readinitb(&rio, fd);
     if (!Rio_readlineb(&rio, buf, MAXLINE)) return;  // request를 읽는다.
-    printf("Request headers : \n"); 
+    // printf("Request headers : \n"); 
     printf("%s", buf);
     
     /* telnet 으로 들어온 정보 Example : GET http://localhost:5000/home.html HTTP/1.1 */
@@ -63,7 +61,7 @@ void doit(int fd)
 
     /* URI를 분리한다. Parse URI from GET request */
     parse_uri(uri, host, port, path);
-    connect_origin_server(buf, host, port);
+    connect_origin_server(fd, buf, host, port, path);
 }
 
 /*
@@ -104,23 +102,34 @@ int parse_uri(char *uri, char *host, char *port, char *path)
     printf("ip : %s / port : %s / path : %s \n", host, port, path);
 }
 
-void connect_origin_server(char *buf, char *host, char *port)
+void connect_origin_server(int listenfd, char *buf, char *host, char *port, char *path)
 {
     int fd;
     rio_t rio;
+    size_t n;
 
-    printf("buf content : %s", buf);
+    // printf("buf content : %s", buf);
     fd = Open_clientfd(host, port); // 원본 서버와 연결
+    Rio_readinitb(&rio, fd);
 
     /* request header 생성 */
+    sprintf(buf, "GET %s HTTP/1.0\r\n", path);
+    Rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Host: %s\r\n", host);
-    sprintf(buf,  "User-Agent: %s\r\n", user_agent_hdr); 
+    Rio_writen(fd, buf, strlen(buf)); 
+    sprintf(buf, "%s", user_agent_hdr); 
+    Rio_writen(fd, buf, strlen(buf)); 
     sprintf(buf, "Connection: close\r\n");
+    Rio_writen(fd, buf, strlen(buf)); 
     sprintf(buf, "Proxy-Connection: close\r\n");
-	Rio_readlineb(&rio, buf, MAXLINE); // 서버에서 결과를 읽는다.
-	Fputs(buf, stdout); // 해당 결과를 표준 출력으로 인쇄한다.
+    Rio_writen(fd, buf, strlen(buf)); 
+    sprintf(buf, "\r\n");
+    Rio_writen(fd, buf, strlen(buf));
+    
+    while((n = Rio_readlineb(&rio,buf,MAXLINE))!=0)
+    {
+        printf("proxy received %d bytes,then send\n",n);
+        Rio_writen(listenfd,buf,n);
+    }
     Close(fd); 
 }
-
-
-

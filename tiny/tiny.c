@@ -16,7 +16,7 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
 
 int main(int argc, char **argv) 
 {
-    int listenfd, connfd;
+    int listenfd, connfd; //
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
@@ -34,8 +34,8 @@ int main(int argc, char **argv)
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, 
                     port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
-	doit(connfd);                                             // 트랜잭션 수행
-	Close(connfd);                                            // 연결 종료
+	doit(connfd); // 트랜잭션 수행
+	Close(connfd); // 연결 종료
     }
 }
 /* $end tinymain */
@@ -241,6 +241,8 @@ void get_filetype(char *filename, char *filetype)
 	strcpy(filetype, "image/jpeg");
     else if (strstr(filename, ".mpg"))
     strcpy(filetype, "video/mpg"); // 연습 문제 11.7 
+    else if (strstr(filename, ".mp4"))
+    strcpy(filetype, "video/mp4"); // 연습 문제 11.7 
     else
 	strcpy(filetype, "text/plain");
 }  

@@ -16,7 +16,7 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
 
 int main(int argc, char **argv) 
 {
-    int listenfd, connfd; //
+    int listenfd, connfd; 
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
@@ -40,11 +40,13 @@ int main(int argc, char **argv)
 }
 /* $end tinymain */
 
-/*
- * doit - 한 개의 HTTP 트랜잭션을 처리한다.
- * handle one HTTP request/response transaction
- */
 /* $begin doit */
+/**
+ * @brief 하나의 HTTP 요청/응답 트랜잭션을 처리한다.
+ * 
+ * @param int fd 연결 식별자
+ * @return void
+ */
 void doit(int fd) 
 {
     int is_static;
@@ -59,23 +61,25 @@ void doit(int fd)
     printf("Request headers : \n"); 
     printf("%s", buf);
     
-    sscanf(buf, "%s %s %s", method, uri, version);       //method, uri, version 정보를 입력받는다. doit:parserequest
+    sscanf(buf, "%s %s %s", method, uri, version); //method, uri, version 정보를 입력받는다. doit:parserequest
     
     // 연습 문제 11.11 - HEAD method 추가
     if (strcasecmp(method, "GET") && strcasecmp(method, "HEAD")) { //request method 종류가 GET인지 비교한다. doit:beginrequesterr
         clienterror(fd, method, "501", "Not Implemented",
                     "Tiny does not implement this method");
         return;
-    }                                                    //doit:endrequesterr
+    } 
+    //doit:endrequesterr
+
     read_requesthdrs(&rio); //요청 헤더를 읽어 들인다. doit:readrequesthdrs
 
     /* URI를 분리한다. Parse URI from GET request */
-    is_static = parse_uri(uri, filename, cgiargs);       //요청이 정적 콘텐츠인지 동적 콘텐츠인지 판단한다. doit:staticcheck
-    if (stat(filename, &sbuf) < 0) {                     //파일이 디스크 상에 존재하지 않을 때. doit:beginnotfound
+    is_static = parse_uri(uri, filename, cgiargs); //요청이 정적 콘텐츠인지 동적 콘텐츠인지 판단한다. doit:staticcheck
+    if (stat(filename, &sbuf) < 0) { //파일이 디스크 상에 존재하지 않을 때. doit:beginnotfound
 	clienterror(fd, filename, "404", "Not found",
 		    "Tiny couldn't find this file");
 	return;
-    }                                                    //doit:endnotfound
+    } //doit:endnotfound
 
 
     /* 1. 정적 콘텐츠 일 때. Serve static content */          
@@ -103,17 +107,20 @@ void doit(int fd)
 }
 /* $end doit */
 
-/*
- * read_requesthdrs - read HTTP request headers
- */
 /* $begin read_requesthdrs */
+/**
+ * @brief HTTP 요청 헤더를 읽는다.
+ * 
+ * @param rio_t* rp 읽기 버퍼
+ * @return void
+ */
 void read_requesthdrs(rio_t *rp) 
 {
     char buf[MAXLINE];
 
     Rio_readlineb(rp, buf, MAXLINE);
     printf("%s", buf);
-    while(strcmp(buf, "\r\n")) {          //readhdrs:checkterm
+    while(strcmp(buf, "\r\n")) { //readhdrs:checkterm
         Rio_readlineb(rp, buf, MAXLINE);
         printf("%s", buf);
     }
@@ -121,11 +128,15 @@ void read_requesthdrs(rio_t *rp)
 }
 /* $end read_requesthdrs */
 
-/*
- * parse_uri - parse URI into filename and CGI args
- *             return 0 if dynamic content, 1 if static
- */
 /* $begin parse_uri */
+/**
+ * @brief uri를 분리한다.
+ * 
+ * @param char* uri 요청 uri
+ * @param char* filename 요청 파일 이름
+ * @param char* cgiargs 요청 파일로 넘기는 cgi인자
+ * @return int 
+ */
 int parse_uri(char *uri, char *filename, char *cgiargs) 
 {
     char *ptr;
@@ -158,10 +169,17 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
 }
 /* $end parse_uri */
 
-/*
- * clienterror - returns an error message to the client
- */
 /* $begin clienterror */
+/**
+ * @brief 클라이언트로 에러 메시지를 리턴한다.
+ * 
+ * @param int fd 연결 식별자
+ * @param char* cause 
+ * @param char* errnum 
+ * @param char* shortmsg 
+ * @param char* longmsg 
+ * @return void
+ */
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg) 
 {
     char buf[MAXLINE], body[MAXBUF];
@@ -184,11 +202,15 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
 }
 /* $end clienterror */
 
-
-/*
- * serve_static - copy a file back to the client 
- */
 /* $begin serve_static */
+/**
+ * @brief 정적 컨텐츠를 제공한다.
+ * 
+ * @param int fd 연결 식별자
+ * @param char* filename 요청 파일 이름
+ * @param int filesize 파일 크기
+ * @param char* method 요청 메소드
+ */
 void serve_static(int fd, char *filename, int filesize, char *method) 
 {
     int srcfd;
@@ -196,38 +218,42 @@ void serve_static(int fd, char *filename, int filesize, char *method)
     rio_t rio;
  
     /* Send response headers to client */
-    get_filetype(filename, filetype); //파일 이름을 통해 파일 타입 결정. servestatic:getfiletype
-    sprintf(buf, "HTTP/%s 200 OK\r\n", reshttp); //헤더 전송. servestatic:beginserve
+    get_filetype(filename, filetype); //파일 이름을 통해 파일 타입 결정. getfiletype
+    sprintf(buf, "HTTP/%s 200 OK\r\n", reshttp); //헤더 전송. beginserve
     sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
     sprintf(buf, "%sConnection: close\r\n", buf);
     sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
     sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
-    Rio_writen(fd, buf, strlen(buf)); //헤더 종료. servestatic:endserve
+    Rio_writen(fd, buf, strlen(buf)); //헤더 종료. endserve
     printf("Response headers:\n");
     printf("%s", buf);
 
     if(strcasecmp(method, "GET") == 0) { // method가 GET일때만 응답 객체 받게끔
         /* 요청한 파일의 내용을 fd로 복사해서 응답 본체를 보낸다. Send response body to client */
-        srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. servestatic:open
-        srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//요청한 파일을 가상 메모리 영역으로 매핑한다. servestatic:mmap
-        Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. servestatic:close
-        Rio_writen(fd, srcp, filesize);         //servㅁestatic:write
-        Munmap(srcp, filesize);                 //servestatic:munmap
+        srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. open
+        srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//요청한 파일을 가상 메모리 영역으로 매핑한다. mmap
+        Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. close
+        Rio_writen(fd, srcp, filesize); //write
+        Munmap(srcp, filesize); //munmap
     }
 
     /* 연습 문제 11.9
-    srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. servestatic:open
+    srcfd = Open(filename, O_RDONLY, 0); //읽기 위해 filename을 오픈한다. open
     
     srcp = (char *)malloc(filesize);
     Rio_readn(srcfd, srcp, filesize);
-    Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. servestatic:close
-    Rio_writen(fd, srcp, filesize);         //servestatic:write
+    Close(srcfd); // 파일을 메모리로 매핑한 후 더 이상 식별자가 필요 없으므로 파일을 닫는다. close
+    Rio_writen(fd, srcp, filesize);         //write
     free(srcp);
     */
 }
 
-/*
- * get_filetype - derive file type from file name
+/**
+ * @brief 파일 이름으로부터 파일 타입을 가져온다.
+ * 
+ * @param char* filename 요청 파일 이름
+ * @param char* filetype 파일 유형
+ * @return void
  */
 void get_filetype(char *filename, char *filetype) 
 {
@@ -248,10 +274,16 @@ void get_filetype(char *filename, char *filetype)
 }  
 /* $end serve_static */
 
-/*
- * serve_dynamic - run a CGI program on behalf of the client
- */
 /* $begin serve_dynamic */
+/**
+ * @brief 동적 컨텐츠를 제공한다.
+ * 
+ * @param int fd 연결 식별자
+ * @param char* filename 요청 파일 이름
+ * @param char* cgiargs 요청 파일로 넘기는 cgi인자
+ * @param char* method 요청 메소드
+ * @return void
+ */
 void serve_dynamic(int fd, char *filename, char *cgiargs, char *method) 
 {
     char buf[MAXLINE], *emptylist[] = { NULL };

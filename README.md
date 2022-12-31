@@ -4,7 +4,8 @@
 
 - 📅 진행 기간 : 2022. 12. 08. ~ 2022. 12. 14.
 - 📃 과제 설명 : [GUIDELINES.md](./GUIDELINES.md)
-- 🗂 함수 설명 관련 도큐먼트 : [Jungle olive-su | webproxy-Lab](https://jungle-olivesu.netlify.app/webproxy-lab/html/proxy_8c.html) © doxygen
+- 📭 개발 일지 : [[Krafton Jungle | TIL_22.12.12 - 13] Webproxy Lab 구현](https://olive-su.tistory.com/434)
+- 🗂 함수 설명 관련 도큐먼트 : [Jungle olive-su | Webproxy-Lab](https://jungle-olivesu.netlify.app/webproxy-lab/html/proxy_8c.html) © doxygen
 - 📖 참고 자료 : [cmu_proxylab](./proxylab.pdf)
 
 <br>
@@ -89,3 +90,11 @@
 >>>
 >>> totalScore: 55/70
 ```
+
+<br>
+
+<br>
+
+|[<img src="https://user-images.githubusercontent.com/67156494/210132307-34f87ef7-3e26-4b00-8fc1-a73c971865b4.png" width=120>](https://github.com/Krafton-Jungle-W07-Team01/Team01-webproxy-lab)
+|-----|
+| [Week07 Team 1 Repository](https://github.com/Krafton-Jungle-W07-Team01/Team01-webproxy-lab) |
